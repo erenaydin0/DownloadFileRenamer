@@ -8,14 +8,27 @@ const CONFIG = {
   maxRecords: 50            // Maksimum kayıt sayısı
 };
 
-// URL'den prefix belirleme kuralları
-const urlPrefixRules = {
-  'test.dakika.com.tr': 'test_',
-  'dev.dakika.com.tr': 'dev_',
-  'app.dakika.com.tr': 'prod_'
-};
+// URL'den prefix belirleme kuralları - Storage'dan yüklenecek
+let urlPrefixRules = {};
 
-console.log('📋 URL Prefix Rules loaded:', urlPrefixRules);
+// Storage'dan kuralları yükle
+async function loadRulesFromStorage() {
+  try {
+    const result = await chrome.storage.local.get(['urlPrefixRules']);
+    if (result.urlPrefixRules) {
+      urlPrefixRules = result.urlPrefixRules;
+      console.log('📋 URL Prefix Rules loaded from storage:', urlPrefixRules);
+    } else {
+      console.log('📋 Using default URL Prefix Rules:', urlPrefixRules);
+    }
+  } catch (error) {
+    console.error('❌ Error loading rules from storage:', error);
+  }
+}
+
+// İlk yüklemede kuralları al
+loadRulesFromStorage();
+
 console.log('⚙️ Configuration:', CONFIG);
 
 // İndirme dosya adı belirleme - EN ÖNEMLİ KISIM!
@@ -140,18 +153,43 @@ function createTrackingFile(data) {
   }
 }
 
+// Popup'tan gelen mesajları dinle
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('📨 Message received:', request);
+  
+  if (request.action === 'updateRules') {
+    urlPrefixRules = request.rules;
+    console.log('🔄 Rules updated from popup:', urlPrefixRules);
+    sendResponse({ success: true });
+  }
+  
+  return true; // Asenkron yanıt için
+});
+
 // Extension kurulduğunda çalışır
 chrome.runtime.onInstalled.addListener(() => {
   console.log('🎉 Download File Renamer Extension installed');
   
-  // İlk konfigürasyonu kaydet
-  chrome.storage.local.set({
-    urlPrefixRules: urlPrefixRules,
-    config: CONFIG,
-    extensionVersion: '1.2'
-  }, () => {
-    console.log('⚙️ Initial configuration saved');
+  // İlk konfigürasyonu kaydet (boş kurallar ile)
+  chrome.storage.local.get(['urlPrefixRules'], (result) => {
+    if (!result.urlPrefixRules) {
+      chrome.storage.local.set({
+        urlPrefixRules: {},
+        config: CONFIG,
+        extensionVersion: '1.2'
+      }, () => {
+        console.log('⚙️ Initial configuration saved with empty rules');
+      });
+    } else {
+      console.log('⚙️ Rules already exist, keeping them');
+    }
   });
+});
+
+// Extension başladığında kuralları yükle
+chrome.runtime.onStartup.addListener(() => {
+  console.log('🚀 Extension started, loading rules...');
+  loadRulesFromStorage();
 });
 
 console.log('🔄 Background script loaded and ready!'); 
