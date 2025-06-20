@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Download File Renamer",
+  "version": "1.2",
+  "description": "İndirilen dosyaların adını URL'ye göre otomatik olarak değiştirir",
+  "permissions": [
+    "downloads",
+    "downloads.open",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+} 
